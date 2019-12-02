@@ -1,4 +1,8 @@
-// part one answer: 2894520
+/**
+ *  https://adventofcode.com/2019/day/2#part1
+ *  Answer: 2894520
+*/
+
 fun main() {
 
     val memory = readInput("day2.txt").first().split(",").map(String::toInt).toMutableList()
