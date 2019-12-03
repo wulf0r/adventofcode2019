@@ -31,3 +31,16 @@ class ShipComputer {
         return memory[0]
     }
 }
+
+
+fun progression(from : Int, to : Int) : IntProgression {
+    return if( from < to) from .. to else from downTo to
+}
+
+data class Point( val x : Int, val y : Int) {
+    fun offsetX(xOffset : Int) = Point(x + xOffset, y)
+    fun offsetY(yOffset : Int) = Point(x, yOffset + y)
+}
+
+
+data class WireMovement(val direction : Char, val distance : Int)
