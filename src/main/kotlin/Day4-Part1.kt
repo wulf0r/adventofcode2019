@@ -7,21 +7,10 @@ fun main() {
 
     val passwords = (172851 until 675869)
         .asSequence()
-        .filter { "$it".length == 6 }
-        .filter {
-            var last : Char? = null
-            var foundSame = false
-            for( c in it.toString().toCharArray()) {
-                if (last != null) {
-                    when {
-                        last.toInt() > c.toInt() -> return@filter false
-                        last == c -> foundSame = true || foundSame
-                    }
-                }
-                last = c
-            }
-            foundSame
-        }.toList()
+        .map(Int::toString)
+        .filter { it.length == 6 }
+        .filter { it.toCharArray().asList().let { chars -> chars == chars.sorted() && chars != chars.distinct() } }
+        .toList()
 
     println("${passwords.size} / " + passwords.take(5))
 
