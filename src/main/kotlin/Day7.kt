@@ -107,11 +107,12 @@ object Day7 {
                             ShipComputerV5(debug = false, printMemory = false).compute(intCodeProgram,
                                 input = { receiveChannel.receive() },
                                 output = { write: Int ->
-                                if (amplifier == 4) {
-                                    output = write
+                                    if (amplifier == 4) {
+                                        output = write
+                                    }
+                                    sendChannel.send(write)
                                 }
-                                sendChannel.send(write)
-                            })
+                            )
                             if( amplifier == 4) output to phaseSettings else null
                         }
                     }.awaitAll().filterNotNull().first()
