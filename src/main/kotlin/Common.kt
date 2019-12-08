@@ -164,3 +164,18 @@ fun <T> timed(desc: String, block : () -> T) : T {
 }
 
 fun compile(programText: String) : Program = programText.split(",").map(String::toInt).toList()
+
+/**
+ * Thanks @ https://www.reddit.com/user/spweller/
+ */
+fun <T> permutations(items: Set<T>): List<List<T>> {
+    if (items.size == 1) {
+        return listOf(listOf(items.first()))
+    }
+
+    return items
+        .map { currentItem ->
+            permutations(items.minus(currentItem)).map { it.plus(currentItem) }
+                .flatten()
+        }
+}
