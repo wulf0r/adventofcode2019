@@ -1,6 +1,5 @@
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlin.math.max
 import kotlin.time.ExperimentalTime
 
 @ExperimentalTime
@@ -29,12 +28,12 @@ object Day7 {
             }.toList().filter { it == it.distinct() }
         }
 
-        fun findMaxThrusterSignal(intCodeProgram: List<Int>): Pair<Int, List<Int>> {
+        fun findMaxThrusterSignal(intCodeProgram: Program): Pair<Cell, List<Int>> {
             val computer = ShipComputerV5(debug = false, printMemory = false)
             return phaseSettingSequences.map { phaseSettings ->
-                var output = 0
+                var output = 0L
                 range.map { amplifier ->
-                    output = computer.compute(intCodeProgram, phaseSettings[amplifier], output) ?: error("no output")
+                    output = computer.computeSingleValue(intCodeProgram, phaseSettings[amplifier].toLong(), output) ?: error("no output")
                 }
                 output to phaseSettings
             }.maxBy { it.first }!!
@@ -59,7 +58,7 @@ object Day7 {
                 ::findMaxThrusterSignal
             )
             timed("maxThruster Part1") {
-                require(21860 == findMaxThrusterSignal(compile(readInput("day7.txt").first())).first)
+                require(21860L == findMaxThrusterSignal(compile(readInput("day7.txt").first())).first)
             }
         }
 
@@ -84,11 +83,11 @@ object Day7 {
                 }
             }.toList().filter { it == it.distinct() }
         }
-        fun findMaxThrusterSignal(intCodeProgram: List<Int>): Pair<Int, List<Int>> {
+        fun findMaxThrusterSignal(intCodeProgram: Program): Pair<Cell, List<Int>> {
             return phaseSettingSequences.map { phaseSettings ->
                 runBlocking {
                     val range = 0..range.last - range.first
-                    val receiveChannels = range.map { _ -> Channel<Int>(1) }
+                    val receiveChannels = range.map { _ -> Channel<Cell>(1) }
                     val sendChannels = range.map { amplifier ->
                         when (amplifier) {
                             4 -> receiveChannels[0]
@@ -96,17 +95,17 @@ object Day7 {
                         }
                     }
                     GlobalScope.launch {
-                        range.forEach { amplifier ->  receiveChannels[amplifier].send(phaseSettings[amplifier]) }
+                        range.forEach { amplifier ->  receiveChannels[amplifier].send(phaseSettings[amplifier].toLong()) }
                         receiveChannels[0].send(0)
                     }
                     range.map { amplifier ->
                         GlobalScope.async {
                             val receiveChannel = receiveChannels[amplifier]
                             val sendChannel = sendChannels[amplifier]
-                            var output = 0
+                            var output = 0L
                             ShipComputerV5(debug = false, printMemory = false).compute(intCodeProgram,
                                 input = { receiveChannel.receive() },
-                                output = { write: Int ->
+                                output = { write ->
                                     if (amplifier == 4) {
                                         output = write
                                     }
@@ -134,11 +133,11 @@ object Day7 {
                 ::findMaxThrusterSignal
             )
             timed("maxThruster Part2") {
-                require(2645740 == findMaxThrusterSignal(compile(readInput("day7.txt").first())).first)
+                require(2645740L == findMaxThrusterSignal(compile(readInput("day7.txt").first())).first)
             }
         }
     }
-    fun test(intCodeProgram: List<Int>, expectedThrusterSignal: Int, expectedPhaseSettings: List<Int>, findMaxThrusterSignal : (List<Int>) -> Pair<Int, List<Int>>) {
+    fun test(intCodeProgram: Program, expectedThrusterSignal: Cell, expectedPhaseSettings: List<Int>, findMaxThrusterSignal : (Program) -> Pair<Cell, List<Int>>) {
         var (thrusterSignal, phaseSettings) = findMaxThrusterSignal(intCodeProgram)
         require(thrusterSignal == expectedThrusterSignal) { "Thruster Signal should be $expectedThrusterSignal but is $thrusterSignal" }
         require(phaseSettings == expectedPhaseSettings) { "Phase settings should be $expectedPhaseSettings but should be $phaseSettings" }

@@ -7,8 +7,8 @@ import kotlin.time.measureTime
 @ExperimentalTime
 fun main() {
 
-    require(shutUpAndCalculate("3,9,8,9,10,9,4,9,99,-1,8", 111) == 0)
-    require(shutUpAndCalculate("3,9,8,9,10,9,4,9,99,-1,8", 8) == 1)
+    require(shutUpAndCalculate("3,9,8,9,10,9,4,9,99,-1,8", 111) == 0L)
+    require(shutUpAndCalculate("3,9,8,9,10,9,4,9,99,-1,8", 8) == 1L)
 
     val programText = readInput("day5.txt").first()
 
@@ -16,17 +16,17 @@ fun main() {
     val dur = measureTime {
         val output = shutUpAndCalculate(program, 5)
         println(" Diagnostic: ${output}")
-        require(output == 15724522)
+        require(output == 15724522L)
     }
     println(" took ${dur.inMilliseconds}")
 
 
 }
 
-fun shutUpAndCalculate(programText : String, input : Int) = shutUpAndCalculate(compile(programText), input)
+fun shutUpAndCalculate(programText : String, input : Cell) = shutUpAndCalculate(compile(programText), input)
 
-fun shutUpAndCalculate(program : Program, input : Int) : Int? {
-    return ShipComputerV5(debug = false, printMemory = false).compute(program,input)
+fun shutUpAndCalculate(program : Program, input : Cell) : Cell? {
+    return ShipComputerV5(debug = false, printMemory = false).computeSingleValue(program,input)
 }
 
 
