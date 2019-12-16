@@ -1,4 +1,6 @@
 import kotlinx.coroutines.runBlocking
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.ExperimentalTime
@@ -166,9 +168,17 @@ fun progression(from : Int, to : Int) : IntProgression {
     return if( from < to) from .. to else from downTo to
 }
 
-data class Point( val x : Int, val y : Int) {
+data class Point( val x : Int, val y : Int) : Comparable<Point> {
     fun offsetX(xOffset : Int) = Point(x + xOffset, y)
     fun offsetY(yOffset : Int) = Point(x, yOffset + y)
+
+    fun slope(other : Point) =  (other.y - y).toDouble() / (other.x - x).toDouble()
+
+    operator fun minus(other : Point) = Point(x - other.x, y - other.y)
+    override operator fun compareTo(other : Point) = when( val difference = x - other.x) {
+        0 -> y - other.y
+        else -> difference
+    }
 }
 
 
