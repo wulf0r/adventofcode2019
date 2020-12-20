@@ -1,10 +1,11 @@
 import kotlinx.coroutines.runBlocking
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
+
+fun readIntListInput(name: String) = readInput(name).mapNotNull { it.toIntOrNull() }
+
 
 fun readInput(name : String) = Thread.currentThread().contextClassLoader.getResourceAsStream(name)?.use { resourceStream ->
     resourceStream.reader().useLines {
@@ -211,3 +212,43 @@ fun <T> permutations(items: Set<T>): List<List<T>> {
                 .flatten()
         }
 }
+
+fun <T> Iterable<T>.permutations() : List<List<T>> = permutations(this.toSet())
+
+operator fun <ITEM_TYPE_FIRST, ITEM_TYPE_SECOND> Iterable<ITEM_TYPE_FIRST>.times(other : Iterable<ITEM_TYPE_SECOND>) : Sequence<Pair<ITEM_TYPE_FIRST, ITEM_TYPE_SECOND>> {
+    val one = this
+    return sequence<Pair<ITEM_TYPE_FIRST,ITEM_TYPE_SECOND>> {
+        one.forEach { oneItem ->
+            other.forEach { twoItem ->
+                yield(oneItem to twoItem)
+            }
+        }
+    }
+}
+
+
+fun <ITEM_TYPE_FIRST, ITEM_TYPE_SECOND,ITEM_TYPE_THIRD> Iterable<ITEM_TYPE_FIRST>.crossProduct(two : Iterable<ITEM_TYPE_SECOND>, third : Iterable<ITEM_TYPE_THIRD>) : Sequence<Triple<ITEM_TYPE_FIRST, ITEM_TYPE_SECOND, ITEM_TYPE_THIRD>> {
+    val one = this
+    return sequence<Triple<ITEM_TYPE_FIRST,ITEM_TYPE_SECOND,ITEM_TYPE_THIRD>> {
+        one.forEach { oneItem ->
+            two.forEach { twoItem ->
+                third.forEach { thirdItem ->
+                    yield(Triple(oneItem,twoItem,thirdItem))
+                }
+
+            }
+        }
+    }
+}
+
+fun <OUT_TYPE:Any> Boolean.map(ifTrue : OUT_TYPE, ifFalse : OUT_TYPE) = if (this) ifTrue else ifFalse
+
+fun List<String>.groupByBlankLine() : List<List<String>> {
+    return (this.mapIndexedNotNull { index, line ->
+        if (line.isBlank()) index else null
+    } + this.size).fold(0 to mutableListOf<List<String>>()) { (start, list), end ->
+        list.add(this.subList(start, end))
+        end to list
+    }.second
+}
+fun List<String>.filterNotBlank() = this.filterNot { it.isBlank() }
