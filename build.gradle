@@ -12,6 +12,8 @@ repositories {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: '1.4.1'
+    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test', version: '1.4.20'
+    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test-junit', version: '1.4.20'
 }
 
 compileKotlin {

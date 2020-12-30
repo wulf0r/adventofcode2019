@@ -1,4 +1,4 @@
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.ExperimentalTime
@@ -176,6 +176,7 @@ data class Point( val x : Int, val y : Int) : Comparable<Point> {
     fun slope(other : Point) =  (other.y - y).toDouble() / (other.x - x).toDouble()
 
     operator fun minus(other : Point) = Point(x - other.x, y - other.y)
+
     override operator fun compareTo(other : Point) = when( val difference = x - other.x) {
         0 -> y - other.y
         else -> difference
@@ -206,11 +207,9 @@ fun <T> permutations(items: Set<T>): List<List<T>> {
         return listOf(listOf(items.first()))
     }
 
-    return items
-        .map { currentItem ->
-            permutations(items.minus(currentItem)).map { it.plus(currentItem) }
-                .flatten()
-        }
+    return items.map { currentItem ->
+        permutations(items.minus(currentItem)).map { it.plus(currentItem) }.flatten()
+    }
 }
 
 fun <T> Iterable<T>.permutations() : List<List<T>> = permutations(this.toSet())
@@ -252,3 +251,122 @@ fun List<String>.groupByBlankLine() : List<List<String>> {
     }.second
 }
 fun List<String>.filterNotBlank() = this.filterNot { it.isBlank() }
+
+fun Int.factorial() : Long {
+    var fact = 1L
+    for( i in 2..this) {
+        fact *= i
+    }
+    return fact;
+}
+
+/**
+ * Map a 2D list to a different 2D list
+ */
+fun <OUT_TYPE : Any, IN_TYPE : Any> List<List<IN_TYPE>>.mapIndexed2d(block : (x : Int, y : Int,value : IN_TYPE) ->OUT_TYPE) : List<List<OUT_TYPE>> {
+    val list = this
+    return runBlocking(Dispatchers.Default) {
+        list.mapIndexed { y, cols -> cols.mapIndexed { x, value -> async { block(x, y, value) } } }
+            .map { it.awaitAll() }
+    }
+}
+
+/**
+ * Are x,y a valid index for this 2D list? Y is rows in the outer list and x refers to items in the inner lists.
+ */
+inline fun <ELEMENT_TYPE : Any> Matrix<ELEMENT_TYPE>.validIndex(x : Int, y : Int) : Boolean{
+    if( y < 0 || x < 0) return false
+    if(this.isEmpty()) return false
+    if( y >= this.size) return false
+    if(x >= this[y].size) return false
+    return true
+}
+
+/**
+ * Are the x and y of the point a valid index for this 2D list.
+ */
+inline fun <IN_TYPE : Any> List<List<IN_TYPE>>.validIndex(point: Point) = this.validIndex(point.x, point.y)
+
+/**
+ * Convert a x,y pair of ints to a point
+ */
+inline fun Pair<Int, Int>.toPoint() = Point(first, second)
+
+/**
+ * List all adjacent points to (x,y) such that adjacent point have coordinates x-1, x, x+1 and y-1, y, y+1.
+ * Only returns points that are valid indices for this list.
+ * Does not return the point of the initial coordinate.
+ */
+fun <IN_TYPE : Any> List<List<IN_TYPE>>.adjacentPoints(x : Int, y : Int) : List<Pair<Int, Int>> {
+    return axes.map { it(x,y) }.filter { (x, y) -> this.validIndex(x, y) }
+}
+
+fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.adjacentPoints(point : Point) = this.adjacentPoints(point.x, point.y)
+
+/**
+ * Get the element at the index x index of the item, y index of the list
+ */
+operator fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.get(x : Int, y : Int) : ITEM_TYPE {
+    return this[y][x]
+}
+
+fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.getOrNull(x : Int, y : Int) : ITEM_TYPE? {
+    return this.getOrNull(y)?.getOrNull(x)
+}
+
+operator fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.get(point: Point) = this[point.x, point.y]
+
+fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.getOrNull(point: Point) = this.getOrNull(point.x, point.y)
+
+fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.getAll(indices : List<Pair<Int,Int>>) =
+    indices.map { (x,y) -> this[x,y] }
+
+/**
+ * Yields the value at index x,y in *list* for each pair in this
+ */
+fun <ITEM_TYPE : Any> List<Pair<Int,Int>>.valuesForIndices(list : List<List<ITEM_TYPE>>) : List<ITEM_TYPE> {
+    return list.getAll(this)
+}
+
+typealias Axis = (Int, Int) -> Pair<Int,Int>
+
+/**
+x - 1 to y - 1,
+x     to y - 1,
+x + 1 to y - 1,
+
+x - 1 to y,
+x + 1 to y,
+
+x - 1 to y + 1,
+x     to y + 1,
+x + 1 to y + 1,
+ */
+val axes = listOf<Axis>(
+    {x,y -> x - 1 to y - 1},
+    {x,y -> x     to y - 1},
+    {x,y -> x + 1 to y - 1},
+    {x,y -> x - 1 to y    },
+    {x,y -> x + 1 to y    },
+    {x,y -> x - 1 to y + 1},
+    {x,y -> x     to y + 1},
+    {x,y -> x + 1 to y + 1}
+)
+
+typealias Matrix<ELEMENT_TYPE> = List<List<ELEMENT_TYPE>>
+fun <ELEMENT_TYPE : Any> Matrix<ELEMENT_TYPE>.pointsOnAxes(originX : Int, originY : Int) : List<Pair<Axis, List<Pair<Int,Int>>>> {
+    val matrix = this
+    return axes.map {
+        it to it.pointsFor(originX, originY).takeWhile { (x,y) -> matrix.validIndex(x,y) }.toList()
+    }
+}
+
+
+fun Axis.pointsFor(originX : Int, originY : Int) : Sequence<Pair<Int, Int>> {
+    val axis = this
+    return sequence {
+        val next = axis(originX, originY)
+        yield(next)
+        yieldAll(axis.pointsFor(next.first, next.second))
+    }
+}

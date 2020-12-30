@@ -44,9 +44,16 @@ fun List<Int>.sumMinMax() = when(this.size) {
 
 fun List<Int>.findContiguousRange(preamble: Int) : List<Int> {
     val invalid = this.findInvalids(preamble).first()
-    return (2..this.size).map { range -> this.windowed(range,1, true).filter { it.size >= 2 }.sortedBy { it.size }}.flatten().first { it.sum() == invalid}
+    return (2..this.size).map { range ->
+            this.windowed(range,1, true)
+                .filter { it.size >= 2 }
+                .sortedBy { it.size }
+        }.flatten()
+        .first { it.sum() == invalid }
 }
 
-fun List<Int>.findInvalids(preamble : Int) : List<Int> = this.windowed(preamble + 1).filterNot { check(it.take(preamble), it.last()) }.map { it.last() }
+fun List<Int>.findInvalids(preamble : Int) : List<Int> = this.windowed(preamble + 1)
+    .filterNot { check(it.take(preamble), it.last()) }
+    .map { it.last() }
 
 fun check(preambleList : List<Int>, toCheck : Int) = (preambleList * preambleList).map { (one, two) -> one + two }.contains(toCheck)
