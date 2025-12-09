@@ -263,11 +263,15 @@ fun Int.factorial() : Long {
 /**
  * Map a 2D list to a different 2D list
  */
-fun <OUT_TYPE : Any, IN_TYPE : Any> List<List<IN_TYPE>>.mapIndexed2d(block : (x : Int, y : Int,value : IN_TYPE) ->OUT_TYPE) : List<List<OUT_TYPE>> {
+inline fun <OUT_TYPE : Any, IN_TYPE : Any> List<List<IN_TYPE>>.mapIndexed2d(crossinline block : (x : Int, y : Int, value : IN_TYPE) ->OUT_TYPE) : List<List<OUT_TYPE>> {
+    val list = this
+    return list.mapIndexed { y, cols -> cols.mapIndexed { x, value -> block(x, y, value) } }
+}
+
+inline fun <OUT_TYPE : Any, IN_TYPE : Any> List<List<IN_TYPE>>.pmapIndexed2d(crossinline block : (x : Int, y : Int, value : IN_TYPE) ->OUT_TYPE) : List<List<OUT_TYPE>> {
     val list = this
     return runBlocking(Dispatchers.Default) {
-        list.mapIndexed { y, cols -> cols.mapIndexed { x, value -> async { block(x, y, value) } } }
-            .map { it.awaitAll() }
+        list.mapIndexed { y, cols -> cols.mapIndexed { x, value -> async { block(x, y, value) } } }.map { it.awaitAll() }
     }
 }
 
@@ -298,7 +302,7 @@ inline fun Pair<Int, Int>.toPoint() = Point(first, second)
  * Does not return the point of the initial coordinate.
  */
 fun <IN_TYPE : Any> List<List<IN_TYPE>>.adjacentPoints(x : Int, y : Int) : List<Pair<Int, Int>> {
-    return axes.map { it(x,y) }.filter { (x, y) -> this.validIndex(x, y) }
+    return axes.map { it(x,y) }.filter { (x, y) -> this.validIndex(x, y) }.toList()
 }
 
 fun <ITEM_TYPE : Any> List<List<ITEM_TYPE>>.adjacentPoints(point : Point) = this.adjacentPoints(point.x, point.y)
@@ -330,19 +334,7 @@ fun <ITEM_TYPE : Any> List<Pair<Int,Int>>.valuesForIndices(list : List<List<ITEM
 
 typealias Axis = (Int, Int) -> Pair<Int,Int>
 
-/**
-x - 1 to y - 1,
-x     to y - 1,
-x + 1 to y - 1,
-
-x - 1 to y,
-x + 1 to y,
-
-x - 1 to y + 1,
-x     to y + 1,
-x + 1 to y + 1,
- */
-val axes = listOf<Axis>(
+val axes = sequenceOf<Axis>(
     {x,y -> x - 1 to y - 1},
     {x,y -> x     to y - 1},
     {x,y -> x + 1 to y - 1},
@@ -354,10 +346,10 @@ val axes = listOf<Axis>(
 )
 
 typealias Matrix<ELEMENT_TYPE> = List<List<ELEMENT_TYPE>>
-fun <ELEMENT_TYPE : Any> Matrix<ELEMENT_TYPE>.pointsOnAxes(originX : Int, originY : Int) : List<Pair<Axis, List<Pair<Int,Int>>>> {
+fun <ELEMENT_TYPE : Any> Matrix<ELEMENT_TYPE>.pointsOnAxes(originX : Int, originY : Int) : Sequence<Pair<Axis, Sequence<Pair<Int,Int>>>> {
     val matrix = this
     return axes.map {
-        it to it.pointsFor(originX, originY).takeWhile { (x,y) -> matrix.validIndex(x,y) }.toList()
+        it to it.pointsFor(originX, originY).takeWhile { (x,y) -> matrix.validIndex(x,y) }
     }
 }
 
@@ -365,8 +357,10 @@ fun <ELEMENT_TYPE : Any> Matrix<ELEMENT_TYPE>.pointsOnAxes(originX : Int, origin
 fun Axis.pointsFor(originX : Int, originY : Int) : Sequence<Pair<Int, Int>> {
     val axis = this
     return sequence {
-        val next = axis(originX, originY)
-        yield(next)
-        yieldAll(axis.pointsFor(next.first, next.second))
+        var pair = Pair(originX, originY)
+        while( true ) {
+            pair = axis(pair.first, pair.second)
+            yield(pair)
+        }
     }
 }

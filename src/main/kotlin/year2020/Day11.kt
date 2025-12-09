@@ -1,7 +1,9 @@
 package year2020
 
 import adjacentPoints
+import getOrNull
 import mapIndexed2d
+import pmapIndexed2d
 import readInput
 import timed
 import valuesForIndices
@@ -31,8 +33,20 @@ val day11Test3 = """.##.##.
 #.#.#.#
 .##.##."""
 
-class SeatingArea(val area : List<List<Seat>>, boolean: Boolean = true) {
-    constructor(_area : List<String>) : this(_area.map { line -> line.map { Seat.fromSymbol(it) }})
+class SeatingArea(val area : List<List<Seat>>, _neighbors : List<List<List<Pair<Int, Int>>>>? = null, val changed : Boolean) {
+    constructor(_area : List<String>) : this(_area.map { line -> line.map { Seat.fromSymbol(it) }}, null, true)
+
+    private val neighbors : List<List<List<Pair<Int, Int>>>>
+    init {
+        neighbors = _neighbors
+            ?: area.mapIndexed2d { x, y, value ->
+                area.pointsOnAxes(x,y)
+                    .mapNotNull { it.second.firstOrNull { (x,y) -> area.getOrNull(x,y) != Seat.floor } }
+                    .toList()
+            }
+    }
+
+
 
     enum class Seat(val symbol : Char) {
         empty('L'),
@@ -66,48 +80,42 @@ class SeatingArea(val area : List<List<Seat>>, boolean: Boolean = true) {
     }
 
     fun applyRulesPart1() : SeatingArea {
+        var changed = false
         val newArea = area.mapIndexed2d { x, y, seat ->
             when(seat) {
-                Seat.empty -> if(noAdjacentOccupied(x,y)) {
-                    Seat.occupied
-                } else seat
-                Seat.occupied -> if( fourOrMoreAdjacentOccupied(x,y)) {
-                    Seat.empty
-                } else seat
+                Seat.empty -> if(noAdjacentOccupied(x,y)) { Seat.occupied } else seat
+                Seat.occupied -> if( fourOrMoreAdjacentOccupied(x,y)) { Seat.empty } else seat
                 else -> seat
+            }.apply {
+                changed = changed || seat != this
             }
         }
-        return SeatingArea(newArea)
+        return SeatingArea(newArea, neighbors, changed)
     }
 
     private fun noAdjacentOccupied(x : Int, y : Int) = area.adjacentPoints(x,y).valuesForIndices(area).none { it == Seat.occupied }
     private fun fourOrMoreAdjacentOccupied(x : Int, y : Int) = area.adjacentPoints(x,y).valuesForIndices(area).count { it == Seat.occupied } >= 4
 
     fun applyRulesPart2() : SeatingArea {
+        var changed = false
         val newArea = area.mapIndexed2d { x, y, seat ->
             when(seat) {
                 Seat.empty -> if(noOccupiedVisible(x,y)) Seat.occupied else seat
                 Seat.occupied -> if(fiveOrMoreVisibleOccupied(x,y)) Seat.empty else seat
                 else -> seat
+            }.apply {
+                changed = changed || seat != this
             }
         }
-        return SeatingArea(newArea)
+        return SeatingArea(newArea, neighbors, changed)
     }
 
     fun nearestVisiblesOccupied(x : Int, y : Int) : List<Seat> {
-        return area.pointsOnAxes(x,y).mapNotNull { (_, points) ->
-            points.valuesForIndices(area).firstOrNull { it != Seat.floor }?.let {
-                when(it) {
-                    Seat.occupied -> it
-                    else -> null
-                }
-            }
-        }
+        return neighbors[y][x].map {(x,y) -> area[y][x] }.filter { it == Seat.occupied }
     }
 
     private fun noOccupiedVisible(x : Int, y : Int) : Boolean = nearestVisiblesOccupied(x,y).isEmpty()
     private fun fiveOrMoreVisibleOccupied(x : Int, y : Int) : Boolean = nearestVisiblesOccupied(x,y).size >= 5
-
 
     fun countOccupied() = area.flatten().count { it == Seat.occupied }
 }
@@ -115,8 +123,7 @@ class SeatingArea(val area : List<List<Seat>>, boolean: Boolean = true) {
 @ExperimentalTime
 fun main() {
 
-    require(SeatingArea(day11Test2).nearestVisiblesOccupied(1,1).isEmpty())
-
+    require(SeatingArea(day11Test2).nearestVisiblesOccupied(1,1).count() == 0)
 
     timed("day11Test") {
         val day11Test1 = SeatingArea(day11Test1)
@@ -124,10 +131,12 @@ fun main() {
         require(26 == day11Test1.applyRulesUntilStable(SeatingArea::applyRulesPart2).countOccupied())
     }
 
-    timed("day11") {
-        val day11 = SeatingArea(readInput("year2020/day11.txt"))
+    val day11 = SeatingArea(readInput("year2020/day11.txt"))
+    timed("day11 part 1") {
         require(2152 == day11.applyRulesUntilStable(SeatingArea::applyRulesPart1).countOccupied())
-        println(day11.applyRulesUntilStable(SeatingArea::applyRulesPart2).countOccupied())
+    }
+    timed("day11 part 2") {
+        require(1937 == day11.applyRulesUntilStable(SeatingArea::applyRulesPart2).countOccupied())
     }
 }
 fun SeatingArea.applyRulesUntilStable(func : (SeatingArea) -> SeatingArea, iteration : Int = 0, debug : Boolean = false) : SeatingArea {
@@ -136,9 +145,9 @@ fun SeatingArea.applyRulesUntilStable(func : (SeatingArea) -> SeatingArea, itera
         println(this)
     }
     val other = func(this)
-    return if( other == this) {
-        println("Final seating after iteration #$iteration")
-        println(other)
+    return if( !other.changed) {
+        //println("Final seating after iteration #$iteration")
+        //println(other)
         other
     }
     else other.applyRulesUntilStable(func, iteration + 1)
